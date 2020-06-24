@@ -89,7 +89,16 @@ for (i in 1){
   # x-axis limits
   if(i==1){xbreaks <- seq(177,178,0.25)}
   
+  # Create the loop for the provincial survery site maps
+  coral_map_sample <- sample_frac(coral_map,0.01) # display only 1% of coral data to speed up map process
+  
   province_survey <- ggplot() + 
+    # load Fiji land
+    geom_sf(data = fiji, fill = land_col, color = NA) +
+    # load Great Sea Reef
+    geom_sf(data = gsr, fill = NA, aes(linetype = "Great Sea Reef"), size = 0.5) +
+    # load coral data
+    geom_tile(data = coral_map_sample, aes(x=longitude,y=latitude, color="Coral")) +
     # load province
     geom_sf(data = province_do, fill = NA, aes(linetype = Name), size = 0.5) +
     # load suvery site data
@@ -98,7 +107,7 @@ for (i in 1){
     coord_sf(xlim = xlim_prov, 
              ylim = ylim_prov) + 
     # x-axis breaks
-    scale_x_longitude(breaks = xbreaks) +
+    #scale_x_longitude(breaks = xbreaks) +
     # survey shape
     scale_shape_manual(name = "Survey Site",
                        labels = c("Ba EIA",
@@ -122,6 +131,18 @@ for (i in 1){
                                  new_col,
                                  rfc_col,
                                  wwf_col)) +
+    # Great Sea Reef legend
+    scale_linetype_manual(name = "Borders",
+                          values = c("solid", "3313"),
+                          guide = guide_legend(override.aes = list(color = c("grey30","grey50"),
+                                                                   shape = c(NA,NA)))) + 
+    # coral legend
+    scale_color_manual(name = "Benthic habitat",
+                       values = coral_col,
+                       label = "Coral reefs",
+                       guide = guide_legend(override.aes = list(fill = coral_col,
+                                                                shape = NA))) + 
+    # remove fill symbology
     guides(fill = FALSE) + 
     # repel text of sites in area of interest
     # geom_sf_text(data = filter(surv_site, province == prov_name), aes(x=longitude, y = latitude, label = site),
@@ -140,7 +161,7 @@ for (i in 1){
     theme_bw()
 
   # Export plots
-  out_survey <- paste0(prov_name,"_survey.tiff")
+  out_survey <- paste0(prov_name,"_survey2.jpeg")
   ggsave(province_survey, filename=file.path(province_map_dir, out_survey), width=6.5,
          height=4.5, units="in", dpi=600, compression = "lzw")
 }
