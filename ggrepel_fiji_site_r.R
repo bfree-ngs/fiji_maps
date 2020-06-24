@@ -1,50 +1,8 @@
-#####################
-#ggrepel example code
-#####################
 
-# Clean environment
-rm(list = ls())
-
-# Setup
-###########################
-
-# Preparing packages
-if (!require("pacman")) install.packages("pacman")
-
-# Load packages
-pacman::p_load(dplyr,fasterize,ggplot2,ggrepel,ggsn,ggspatial,metR,raster,RColorBrewer,rgdal,rgeos,scales,sf,sp,tidyr)
-
-# get the most updated version of ggrepel
-devtools::install_github("slowkow/ggrepel")
-library(ggrepel)
-
-# Setting data directory
-gis_dir <- setwd("pathname")
-
-# where to save provinces
-provinces_map_dir <-  "C:\\Users\\free\\Dropbox (MPAMystery)\\RICOTTA_GIS\\oceans_program\\dom\\fiji_report\\maps\\province"
-
-
-# Read data
-###########################
-# Loading the required data
-# Administrative boundary data
-fiji <- st_read(dsn = gis_dir, layer = "fiji") # Fiji land administrative boundary
-qoliqoli <- st_read(dsn = gis_dir, layer = "qoliqoli") # Qoliqoli (district) boundaries where survey sites occurred
 provinces <- st_read(dsn = gis_dir, layer = "province") # Fiji provinces where survey sites occurred
-gsr <- st_read(dsn = gis_dir, layer = "gsr") # Great Sea Reef boundary
 
 # Ecological data
 fji_coral <- st_read(dsn = gis_dir, layer = "fiji_coral") # Coral data extent in Great Sea Reef
-
-# Rasterize ecological data
-# Coral data
-coral_temp <- raster(extent(fji_coral),res = 25, crs = fji_coral) # create a template raster with the coral reef extent
-coral_rast <- fasterize(fji_coral,coral_temp) # rasterizing the coral data
-coral_map <- raster::as.data.frame(coral_rast, xy=T) %>% # Convert to dataframe to have mapped later
-  dplyr::filter(!is.na(layer)) %>%
-  setNames(c("longitude", "latitude", "coral")) %>%
-  mutate(coral = "Coral")
 
 # Historic survey site data
 surv_site <- st_read(dsn = gis_dir, layer = "gsr_survey_sites") %>% # all survey sites
@@ -112,47 +70,6 @@ new_shape <- 22 # square
 rfc_shape <- 23 # diamond
 wwf_shape <- 24 # triangle up
 
-# scale bar
-scalebar_ba <- annotation_scale(width_hint = 0.2, # percent of the plot occupied (20%)
-                                pad_x = unit(1.55, "in"), # how much padded from the x=0 position
-                                pad_y = unit(0.05, "in")) # how much padded from the y=0 position
-
-# north arrow
-narrow_ba <- annotation_north_arrow(height = unit(0.25, "in"), 
-                                    width = unit(0.20, "in"),
-                                    pad_x = unit(2.4, "in"),
-                                    pad_y = unit(0.05, "in"),
-                                    style = north_arrow_orienteering(
-                                      line_width = 1,
-                                      line_col = "black",
-                                      fill = c("white", "black"),
-                                      text_col = "black",
-                                      text_family = "",
-                                      text_face = NULL,
-                                      text_size = 5,
-                                      text_angle = 0))
-
-# map themes
-map_theme_ba <- theme(axis.text=element_text(size=8),
-                      axis.title=element_text(size=10),
-                      plot.title=element_text(size=12),
-                      panel.grid.major = element_line(color = "transparent"), 
-                      panel.grid.minor = element_line(color = "transparent"),
-                      panel.background = element_rect(fill = water_col),
-                      axis.text.y = element_text(angle = 90, hjust = 0.5),
-                      legend.position =  c(0.15,0.9), # alternative = bottom
-                      legend.title = element_blank(), # remove the legend title
-                      legend.text = element_text(size=6), # text size of the descriptor
-                      legend.background = element_rect(fill = "transparent"), # make the box transparent --> "transparent"
-                      legend.box.background = element_rect(fill = "white", color = "#4C84A2"), # white background with blue border
-                      legend.box.margin = margin(1,1,1,1), # add some space between the box and the text
-                      legend.spacing.y = unit(0.025, "in"),
-                      legend.key.size = unit(0.1, "in"), # size of the color box
-                      legend.key = element_rect(fill = "transparent"), # make the background of the key clear
-                      legend.margin = margin(0, 0.0, 0, 0, "in"), # reduce spacing between legend elements
-                      axis.line = element_line(colour = "black"))
-
-
 # Figure generation
 ###########################
 
@@ -172,16 +89,7 @@ for (i in 1){
   # x-axis limits
   if(i==1){xbreaks <- seq(177,178,0.25)}
   
-  # Create the loop for the provincial survery site maps
-  coral_map_sample <- sample_frac(coral_map,0.01) # display only 1% of coral data to speed up map process
-  
   province_survey <- ggplot() + 
-    # load Fiji land
-    geom_sf(data = fiji, fill = land_col, color = NA) +
-    # load Great Sea Reef
-    geom_sf(data = gsr, fill = NA, aes(linetype = "Great Sea Reef"), size = 0.5) +
-    # load coral data
-    geom_tile(data = coral_map_sample, aes(x=longitude,y=latitude, color="Coral")) +
     # load province
     geom_sf(data = province_do, fill = NA, aes(linetype = Name), size = 0.5) +
     # load suvery site data
@@ -214,18 +122,6 @@ for (i in 1){
                                  new_col,
                                  rfc_col,
                                  wwf_col)) +
-    # Great Sea Reef legend
-    scale_linetype_manual(name = "Borders",
-                          values = c("solid", "3313"),
-                          guide = guide_legend(override.aes = list(color = c("grey30","grey50"),
-                                                                   shape = c(NA,NA)))) + 
-    # coral legend
-    scale_color_manual(name = "Benthic habitat",
-                       values = coral_col,
-                       label = "Coral reefs",
-                       guide = guide_legend(override.aes = list(fill = coral_col,
-                                                                shape = NA))) + 
-    # remove fill symbology
     guides(fill = FALSE) + 
     # repel text of sites in area of interest
     # geom_sf_text(data = filter(surv_site, province == prov_name), aes(x=longitude, y = latitude, label = site),
@@ -240,12 +136,8 @@ for (i in 1){
                              point.padding = NA) +
     # labels + title
     labs(x="",y="", title="") + 
-    # map elements
-    scalebar_ba +
-    narrow_ba +
     # theme
-    theme_bw() + 
-    map_theme_ba_survey
+    theme_bw()
 
   # Export plots
   out_survey <- paste0(prov_name,"_survey.tiff")
